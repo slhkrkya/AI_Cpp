@@ -1,0 +1,12 @@
+{
+  "name": "aicpp",
+  "version": "0.1.0",
+  "dependencies": [
+    "fmt",
+    "curl",
+    "nlohmann-json",
+    "replxx",
+    "re2",
+    "reproc"
+  ]
+}
