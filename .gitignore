@@ -1,6 +1,8 @@
 build/
+build-release/
 out/
 vcpkg_installed/
 .vs/
 *.user
 CMakeUserPresets.json
+.claude/
