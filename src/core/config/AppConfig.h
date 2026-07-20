@@ -6,8 +6,13 @@
 namespace aicpp::config {
 
 struct ProviderConfig {
-    std::string host;          // Ollama-style local providers
+    std::string host;          // Ollama-style local providers (NDJSON /api/chat)
+    std::string base_url;      // any OpenAI-compatible chat-completions provider (Groq, Mistral,
+                                // DeepSeek, Together, Fireworks, xAI, Azure OpenAI, Gemini's
+                                // openai-compat endpoint, local llama.cpp/LM Studio servers, ...)
     std::string api_key_env;   // env var name holding the API key, for cloud providers
+    std::string api_key;       // optional: literal key saved via `/model` for convenience
+                                // (plain text in config.json - env var is preferred when set)
     std::string default_model;
 };
 

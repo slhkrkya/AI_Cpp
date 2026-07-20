@@ -13,17 +13,12 @@ CommandResult CmdHelp::execute(CommandContext& ctx) {
         fmt::print("  {:<12} {}\n", cmd->usage(), cmd->description());
     }
 
-    std::string envName = "OPENAI_API_KEY";
-    auto it = ctx.app.appConfig.providers.find("openai");
-    if (it != ctx.app.appConfig.providers.end() && !it->second.api_key_env.empty()) {
-        envName = it->second.api_key_env;
-    }
-
-    fmt::print("\nBulut saglayici kullanmak istersen (orn. OpenAI):\n");
-    fmt::print("  1) PowerShell'de:  $env:{} = \"...anahtarin...\"\n", envName);
-    fmt::print("  2) aicpp'yi kapatip yeniden baslat (/exit, sonra .\\build\\aicpp.exe)\n");
-    fmt::print("  3) /model openai:gpt-4o-mini yaz\n");
-    fmt::print("  Kalici olmasi icin: setx {} \"...anahtarin...\"  (sonra yeni bir terminal ac)\n", envName);
+    fmt::print("\nBulut saglayici kullanmak istersen:\n");
+    fmt::print("  /model <saglayici>:<model> yaz (orn. openai:gpt-4o-mini, groq:llama-3.3-70b-versatile).\n");
+    fmt::print("  Saglayici tanimli degilse (base URL / API anahtari eksikse) uygulama senden ister ve\n");
+    fmt::print("  config.json'a kaydeder - yeniden baslatmana gerek kalmaz. OpenAI'in chat-completions\n");
+    fmt::print("  API'siyle uyumlu her saglayici icin gecerli (OpenAI, Groq, Mistral, DeepSeek, Together,\n");
+    fmt::print("  Fireworks, xAI/Grok, Azure OpenAI, Gemini'nin openai-uyumlu ucu, vb.).\n");
     fmt::print("\nDetaylar icin /config, gecmis oturumlar icin /history, salt-okunur inceleme icin "
                "/plan kullanabilirsin.\n");
     return CommandResult::Handled;
