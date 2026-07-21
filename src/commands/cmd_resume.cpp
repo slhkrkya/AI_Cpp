@@ -4,8 +4,10 @@
 #include <cctype>
 #include <cstdlib>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 
+#include "cli/theme.h"
 #include "core/config/ProviderFactory.h"
 
 namespace aicpp::commands {
@@ -15,13 +17,13 @@ namespace {
 std::string roleLabel(llm::Role role) {
     switch (role) {
         case llm::Role::User:
-            return "Sen";
+            return i18n::t("role.user");
         case llm::Role::Assistant:
-            return "Asistan";
+            return i18n::t("role.assistant");
         case llm::Role::Tool:
-            return "Arac";
+            return i18n::t("role.tool");
         case llm::Role::System:
-            return "Sistem";
+            return i18n::t("role.system");
     }
     return "?";
 }
@@ -37,15 +39,15 @@ CommandResult CmdResume::execute(CommandContext& ctx) {
 
     if (ctx.rawArgs.empty()) {
         if (recent.empty()) {
-            fmt::print("Kayitli oturum yok.\n");
+            cli::theme::info(i18n::t("resume.none_saved"));
             return CommandResult::Handled;
         }
-        fmt::print("Gecmis oturumlar:\n");
+        cli::theme::sectionHeader(i18n::t("resume.list_header"));
         for (size_t i = 0; i < recent.size(); ++i) {
-            std::string title = recent[i].title.empty() ? "(basliksiz)" : recent[i].title;
+            std::string title = recent[i].title.empty() ? i18n::t("common.untitled") : recent[i].title;
             fmt::print("  [{}] {}  {}  {}\n", i + 1, recent[i].id, recent[i].updated_at, title);
         }
-        fmt::print("\nDevam etmek icin: /resume <numara-veya-id>\n");
+        fmt::print("\n{}\n", i18n::t("resume.hint"));
         return CommandResult::Handled;
     }
 
@@ -59,7 +61,7 @@ CommandResult CmdResume::execute(CommandContext& ctx) {
 
     auto data = ctx.app.sessionStore.load(targetId);
     if (!data) {
-        fmt::print("Oturum bulunamadi: {}\n", targetId);
+        cli::theme::error(fmt::format(fmt::runtime(i18n::t("resume.not_found")), targetId));
         return CommandResult::ShowError;
     }
 
@@ -70,19 +72,26 @@ CommandResult CmdResume::execute(CommandContext& ctx) {
         ctx.app.session.setModel(resolved->model);
         ctx.app.currentModelSpec = data->meta.model_spec;
     } else {
-        fmt::print("Uyari: kayitli model '{}' yuklenemedi ({}), mevcut model korunuyor.\n",
-                    data->meta.model_spec, error);
+        cli::theme::warn(fmt::format(fmt::runtime(i18n::t("resume.provider_warning")), data->meta.model_spec, error));
     }
 
     ctx.app.session.setHistory(data->transcript);
     ctx.app.currentSessionMeta = data->meta;
+    ctx.app.permissionManager.restoreAlwaysAllowed(data->always_allowed_tools);
 
-    std::string title = data->meta.title.empty() ? "(basliksiz)" : data->meta.title;
-    fmt::print("\nOturum yuklendi: {} - {} ({} mesaj, model: {})\n", data->meta.id, title,
-               data->transcript.size(), ctx.app.currentModelSpec);
+    std::string title = data->meta.title.empty() ? i18n::t("common.untitled") : data->meta.title;
+    fmt::print("\n");
+    cli::theme::success(fmt::format(fmt::runtime(i18n::t("resume.loaded")), data->meta.id, title,
+                                      data->transcript.size(), ctx.app.currentModelSpec));
+
+    if (!data->always_allowed_tools.empty()) {
+        cli::theme::info(fmt::format(fmt::runtime(i18n::t("resume.grants_restored")),
+                                       fmt::join(data->always_allowed_tools, ", ")));
+    }
 
     size_t start = data->transcript.size() > 4 ? data->transcript.size() - 4 : 0;
-    fmt::print("\nSon mesajlar:\n");
+    fmt::print("\n");
+    cli::theme::sectionHeader(i18n::t("resume.recent_messages_header"));
     for (size_t i = start; i < data->transcript.size(); ++i) {
         const auto& msg = data->transcript[i];
         std::string text = msg.textOnly();

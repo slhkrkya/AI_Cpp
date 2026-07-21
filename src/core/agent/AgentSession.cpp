@@ -2,6 +2,8 @@
 
 #include <fmt/format.h>
 
+#include "core/net/CancelToken.h"
+
 namespace aicpp::agent {
 
 using llm::ChatRequest;
@@ -27,6 +29,8 @@ void AgentSession::runTurn(const std::string& userInput, const StreamCallback& o
     history_.push_back(Message::user(userInput));
 
     for (int iteration = 0; iteration < kMaxToolIterations; ++iteration) {
+        if (net::cancelRequested().load()) return;  // cancelled while a tool was executing
+
         ChatRequest request;
         request.model = model_;
         request.system_prompt =
@@ -35,7 +39,9 @@ void AgentSession::runTurn(const std::string& userInput, const StreamCallback& o
         request.stream = true;
         if (toolRegistry_) request.tools = toolRegistry_->allDefinitions();
 
+        net::streamInFlight().store(true);
         ChatResponse response = provider_->chatStream(request, onEvent);
+        net::streamInFlight().store(false);
 
         Message assistantMessage;
         assistantMessage.role = Role::Assistant;
@@ -112,6 +118,7 @@ ToolResult AgentSession::executeToolCall(const ToolCall& call, const StreamCallb
     endEv.type = StreamEvent::Type::ToolCallEnd;
     endEv.tool_id = call.id;
     endEv.tool_name = call.name;
+    endEv.diff = execResult.diff;
     onEvent(endEv);
 
     return result;

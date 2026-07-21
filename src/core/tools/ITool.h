@@ -2,9 +2,13 @@
 
 #include <atomic>
 #include <filesystem>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
+
+#include "core/llm/Schema.h"
 
 namespace aicpp::tools {
 
@@ -19,6 +23,9 @@ struct ToolExecResult {
     bool success = true;
     std::string content_for_model;
     bool is_error = false;
+    // nullopt = tool doesn't produce diffs (most tools); empty vector =
+    // computed, no visible change; non-empty = the actual diff to show.
+    std::optional<std::vector<llm::DiffLine>> diff;
 };
 
 class ITool {

@@ -2,7 +2,10 @@
 
 #include <iostream>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
+
+#include "cli/theme.h"
+#include "i18n/Translator.h"
 
 namespace aicpp::permissions {
 
@@ -22,8 +25,10 @@ Decision DefaultPermissionManager::requestPermission(const std::string& toolName
         return Decision::Allow;
     }
 
-    fmt::print("\n[izin] '{}' su islemi yapmak istiyor:\n  {}\n", toolName, humanSummary);
-    fmt::print("Izin ver? (y)es / (n)o / (a)lways bu oturumda: ");
+    std::string header = fmt::format(fmt::runtime(i18n::t("permission.wants_to")), toolName);
+    cli::theme::permissionPrompt(header, humanSummary);
+    fmt::print("{}", cli::theme::promptText(i18n::t("permission.ask_yna")));
+
     std::string answer;
     if (!std::getline(std::cin, answer) || answer.empty()) {
         return Decision::Deny;

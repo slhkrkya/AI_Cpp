@@ -1,4 +1,4 @@
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -7,13 +7,16 @@
 
 #include "cli/dispatcher.h"
 #include "cli/line_editor.h"
+#include "cli/stream_printer.h"
 #include "cli/terminal.h"
+#include "cli/theme.h"
 #include "commands/app_context.h"
 #include "commands/cmd_clear.h"
 #include "commands/cmd_config.h"
 #include "commands/cmd_exit.h"
 #include "commands/cmd_help.h"
 #include "commands/cmd_history.h"
+#include "commands/cmd_language.h"
 #include "commands/cmd_model.h"
 #include "commands/cmd_plan.h"
 #include "commands/cmd_resume.h"
@@ -25,6 +28,7 @@
 #include "core/config/Paths.h"
 #include "core/config/ProviderFactory.h"
 #include "core/llm/Schema.h"
+#include "core/net/CancelToken.h"
 #include "core/permissions/DefaultPermissionManager.h"
 #include "core/session/SessionStore.h"
 #include "core/tools/BashTool.h"
@@ -36,30 +40,11 @@
 #include "core/tools/ToolRegistry.h"
 #include "core/tools/WriteFileTool.h"
 #include "core/workflow/WorkflowStore.h"
+#include "i18n/Language.h"
+#include "i18n/Translator.h"
 #include "modes/app_mode.h"
 
 namespace {
-
-void printStreamEvent(const aicpp::llm::StreamEvent& ev) {
-    using Type = aicpp::llm::StreamEvent::Type;
-    switch (ev.type) {
-        case Type::TextDelta:
-            fmt::print("{}", ev.text);
-            std::fflush(stdout);
-            break;
-        case Type::ToolCallStart:
-            fmt::print("\n[arac calisiyor: {}]\n", ev.tool_name);
-            break;
-        case Type::ToolCallEnd:
-            fmt::print("[arac tamamlandi: {}]\n", ev.tool_name);
-            break;
-        case Type::Error:
-            fmt::print(stderr, "\n[hata] {}\n", ev.text);
-            break;
-        default:
-            break;
-    }
-}
 
 std::string makeTitle(const std::string& firstMessage) {
     constexpr size_t kMaxLen = 60;
@@ -76,15 +61,21 @@ std::string makeTitle(const std::string& firstMessage) {
 
 int main() {
     aicpp::cli::enableAnsiSupport();
+    aicpp::cli::theme::init();
+    aicpp::cli::installCtrlCHandler();
 
     auto appConfig = aicpp::config::AppConfig::load();
+    auto lang = aicpp::i18n::parseLanguage(appConfig.language).value_or(aicpp::i18n::Language::Tr);
+    aicpp::i18n::init(lang);
+
     aicpp::workflow::ensureExampleSpec();
 
     std::string currentModelSpec = aicpp::config::ProviderFactory::defaultSpec(appConfig);
     std::string providerError;
     auto resolved = aicpp::config::ProviderFactory::create(currentModelSpec, appConfig, providerError);
     if (!resolved) {
-        fmt::print(stderr, "Baslangic sagliyicisi kurulamadi: {}\n", providerError);
+        aicpp::cli::theme::error(
+            fmt::format(fmt::runtime(aicpp::i18n::t("app.startup_provider_failed")), providerError));
         return 1;
     }
 
@@ -131,11 +122,13 @@ int main() {
     registry.registerCommand(std::make_shared<aicpp::commands::CmdResume>());
     registry.registerCommand(std::make_shared<aicpp::commands::CmdPlan>());
     registry.registerCommand(std::make_shared<aicpp::commands::CmdWorkflow>());
+    registry.registerCommand(std::make_shared<aicpp::commands::CmdLanguage>());
 
     aicpp::commands::AppContext appCtx{session,      registry,          toolRegistry,     appConfig,
                                         currentModelSpec, sessionStore,  currentSessionMeta, permissionManager,
                                         appMode,      pendingFollowUp};
     aicpp::cli::LineEditor editor;
+    aicpp::cli::StreamPrinter streamPrinter;
 
     auto runAndSave = [&](const std::string& text) {
         if (currentSessionMeta.title.empty()) {
@@ -143,21 +136,29 @@ int main() {
         }
         currentSessionMeta.model_spec = currentModelSpec;
 
-        session.runTurn(text, printStreamEvent);
+        aicpp::net::cancelRequested().store(false);
+        streamPrinter.beginTurn();
+        session.runTurn(text, std::ref(streamPrinter));
+        streamPrinter.endTurn();
         fmt::print("\n\n");
+
+        if (aicpp::net::cancelRequested().load()) {
+            aicpp::cli::theme::warn(aicpp::i18n::t("app.cancelled"));
+        }
 
         aicpp::session::SessionData data;
         data.meta = currentSessionMeta;
         data.transcript = session.history();
+        data.always_allowed_tools = permissionManager.exportAlwaysAllowed();
         sessionStore.save(data);
         currentSessionMeta = data.meta;
     };
 
-    fmt::print("aicpp v0.7 - /help ile komutlari gorebilirsin. Aktif model: {}\n\n", currentModelSpec);
+    fmt::print("{}\n\n", fmt::format(fmt::runtime(aicpp::i18n::t("app.banner")), currentModelSpec));
 
     while (true) {
         std::string prompt = appMode == aicpp::modes::AppMode::Planning ? "[PLAN] > " : "> ";
-        auto lineOpt = editor.readLine(prompt);
+        auto lineOpt = editor.readLine(aicpp::cli::theme::coloredPrompt(prompt));
         if (!lineOpt) break;
 
         const std::string& line = *lineOpt;
@@ -177,6 +178,6 @@ int main() {
         runAndSave(line);
     }
 
-    fmt::print("Bye.\n");
+    fmt::print("{}\n", aicpp::i18n::t("app.bye"));
     return 0;
 }

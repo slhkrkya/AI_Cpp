@@ -1,6 +1,7 @@
 #include "providers/ollama/OllamaProvider.h"
 
 #include "core/llm/NdjsonFrameParser.h"
+#include "core/net/CancelToken.h"
 
 namespace aicpp::providers {
 
@@ -137,7 +138,15 @@ ChatResponse OllamaProvider::chatStream(const ChatRequest& request, const Stream
 
     auto httpResp = http_.postStreaming(
         url, {"Content-Type: application/json"}, body,
-        [&](std::string_view chunk) { parser.feed(chunk, onEvent); });
+        [&](std::string_view chunk) { parser.feed(chunk, onEvent); }, &net::cancelRequested());
+
+    if (net::cancelRequested().load()) {
+        response.stop_reason = "cancelled";
+        if (!accumulatedText.empty()) {
+            response.content.push_back(ContentBlock::makeText(accumulatedText));
+        }
+        return response;
+    }
 
     if (!httpResp.ok()) {
         response.stop_reason = "error";

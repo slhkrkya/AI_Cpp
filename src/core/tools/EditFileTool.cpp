@@ -6,6 +6,9 @@
 
 #include <fmt/format.h>
 
+#include "core/tools/LineDiff.h"
+#include "i18n/Translator.h"
+
 namespace aicpp::tools {
 
 nlohmann::json EditFileTool::parametersSchema() const {
@@ -69,6 +72,7 @@ ToolExecResult EditFileTool::execute(const nlohmann::json& args, ToolExecutionCo
                 true};
     }
 
+    std::string oldContent = content;
     content.replace(firstPos, oldStr.size(), newStr);
 
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
@@ -79,7 +83,17 @@ ToolExecResult EditFileTool::execute(const nlohmann::json& args, ToolExecutionCo
     out.close();
 
     tracker_->markSeen(path);
-    return {true, fmt::format("{} guncellendi.", path.string()), false};
+
+    ToolExecResult result;
+    result.success = true;
+    result.content_for_model = fmt::format("{} guncellendi.", path.string());
+    result.is_error = false;
+    if (auto diff = computeLineDiff(oldContent, content)) {
+        result.diff = std::move(*diff);
+    } else {
+        result.diff = std::vector<llm::DiffLine>{{llm::DiffLineType::Collapsed, i18n::t("diff.too_large")}};
+    }
+    return result;
 }
 
 }  // namespace aicpp::tools

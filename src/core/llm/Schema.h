@@ -9,6 +9,16 @@
 
 namespace aicpp::llm {
 
+// A single line in a unified-diff-style rendering of a file change (see
+// core/tools/LineDiff.h). Lives here rather than in core/tools so that
+// StreamEvent (below) can carry it without core/llm depending on core/tools.
+enum class DiffLineType { Context, Added, Removed, Collapsed };
+
+struct DiffLine {
+    DiffLineType type;
+    std::string text;
+};
+
 enum class Role { System, User, Assistant, Tool };
 
 struct ToolCall {
@@ -116,6 +126,11 @@ struct StreamEvent {
     std::string args_fragment;
     nlohmann::json args_complete;
     std::optional<Usage> usage;
+
+    // Populated for ToolCallEnd when the tool produced a diff preview (see
+    // ToolExecResult::diff). nullopt = not applicable (most tools); empty
+    // vector = computed but no visible change; non-empty = the actual diff.
+    std::optional<std::vector<DiffLine>> diff;
 };
 
 using StreamCallback = std::function<void(const StreamEvent&)>;

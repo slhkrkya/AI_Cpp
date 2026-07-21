@@ -19,6 +19,7 @@ struct SessionMeta {
 struct SessionData {
     SessionMeta meta;
     std::vector<llm::Message> transcript;
+    std::vector<std::string> always_allowed_tools;  // "always allow" permission grants for this session
 };
 
 }  // namespace aicpp::session

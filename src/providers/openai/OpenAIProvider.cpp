@@ -3,6 +3,7 @@
 #include <map>
 
 #include "core/llm/SseFrameParser.h"
+#include "core/net/CancelToken.h"
 
 namespace aicpp::providers {
 
@@ -171,7 +172,16 @@ ChatResponse OpenAIProvider::chatStream(const ChatRequest& request, const Stream
     };
 
     auto httpResp = http_.postStreaming(url, headers, body,
-                                          [&](std::string_view chunk) { parser.feed(chunk, onEvent); });
+                                          [&](std::string_view chunk) { parser.feed(chunk, onEvent); },
+                                          &net::cancelRequested());
+
+    if (net::cancelRequested().load()) {
+        response.stop_reason = "cancelled";
+        if (!accumulatedText.empty()) {
+            response.content.push_back(ContentBlock::makeText(accumulatedText));
+        }
+        return response;
+    }
 
     if (!httpResp.ok()) {
         response.stop_reason = "error";

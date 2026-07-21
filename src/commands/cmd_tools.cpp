@@ -2,6 +2,8 @@
 
 #include <fmt/core.h>
 
+#include "cli/theme.h"
+
 namespace aicpp::commands {
 
 namespace {
@@ -9,13 +11,13 @@ namespace {
 std::string riskToString(tools::RiskCategory risk) {
     switch (risk) {
         case tools::RiskCategory::Read:
-            return "Read (otomatik izinli)";
+            return i18n::t("tools.risk.read");
         case tools::RiskCategory::Write:
-            return "Write (izin gerekir)";
+            return i18n::t("tools.risk.write");
         case tools::RiskCategory::Execute:
-            return "Execute (izin gerekir)";
+            return i18n::t("tools.risk.execute");
         case tools::RiskCategory::Network:
-            return "Network (izin gerekir)";
+            return i18n::t("tools.risk.network");
     }
     return "?";
 }
@@ -23,7 +25,7 @@ std::string riskToString(tools::RiskCategory risk) {
 }  // namespace
 
 CommandResult CmdTools::execute(CommandContext& ctx) {
-    fmt::print("Kullanilabilir araclar:\n");
+    cli::theme::sectionHeader(i18n::t("tools.header"));
     for (auto* tool : ctx.app.toolRegistry.all()) {
         fmt::print("  {:<12} [{}] {}\n", tool->name(), riskToString(tool->riskCategory()), tool->description());
     }

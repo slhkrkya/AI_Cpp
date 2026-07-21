@@ -69,6 +69,7 @@ void SessionStore::save(SessionData& data) const {
         transcript.push_back(llm::messageToJson(msg));
     }
     j["transcript"] = transcript;
+    j["always_allowed_tools"] = data.always_allowed_tools;
 
     auto finalPath = dir_ / (data.meta.id + ".json");
     auto tmpPath = dir_ / (data.meta.id + ".json.tmp");
@@ -109,6 +110,7 @@ std::optional<SessionData> SessionStore::load(const std::string& id) const {
             data.transcript.push_back(llm::messageFromJson(msgJson));
         }
     }
+    data.always_allowed_tools = j.value("always_allowed_tools", std::vector<std::string>{});
     return data;
 }
 

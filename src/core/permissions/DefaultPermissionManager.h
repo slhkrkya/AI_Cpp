@@ -21,6 +21,13 @@ public:
         if (!overrideStack_.empty()) overrideStack_.pop_back();
     }
 
+    std::vector<std::string> exportAlwaysAllowed() const override {
+        return {alwaysAllowed_.begin(), alwaysAllowed_.end()};
+    }
+    void restoreAlwaysAllowed(const std::vector<std::string>& tools) override {
+        alwaysAllowed_.insert(tools.begin(), tools.end());
+    }
+
 private:
     std::unordered_set<std::string> alwaysAllowed_;
     std::vector<PolicyOverride> overrideStack_;

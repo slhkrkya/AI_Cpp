@@ -7,6 +7,7 @@
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
 
+#include "cli/theme.h"
 #include "core/agent/AgentSession.h"
 #include "core/permissions/ReadOnlyPermissionManager.h"
 #include "core/workflow/WorkflowEngine.h"
@@ -16,6 +17,8 @@ namespace aicpp::commands {
 
 namespace {
 
+// LLM-facing instruction, not user-facing UI text - deliberately left in
+// English regardless of the interface language (see i18n scope note).
 constexpr const char* kMetaSystemPrompt =
     "You decompose a task into a small JSON workflow spec for parallel sub-agent investigation. "
     "Output ONLY a single JSON object (no prose, no markdown fences) matching exactly this shape: "
@@ -39,8 +42,7 @@ std::optional<workflow::WorkflowSpec> decomposeAdHoc(CommandContext& ctx, const 
     size_t start = raw.find('{');
     size_t end = raw.rfind('}');
     if (start == std::string::npos || end == std::string::npos || end <= start) {
-        error = "Model gecerli bir JSON spec uretemedi. Kucuk/yerel modeller bu adimda guvenilir "
-                "olmayabilir - daha guclu bir /model (orn. openai:...) ile tekrar deneyebilirsin.";
+        error = i18n::t("workflow.meta.no_json");
         return std::nullopt;
     }
     std::string jsonText = raw.substr(start, end - start + 1);
@@ -49,7 +51,7 @@ std::optional<workflow::WorkflowSpec> decomposeAdHoc(CommandContext& ctx, const 
     try {
         j = nlohmann::json::parse(jsonText);
     } catch (const nlohmann::json::parse_error& e) {
-        error = fmt::format("Model ciktisi JSON olarak parse edilemedi: {}", e.what());
+        error = fmt::format(fmt::runtime(i18n::t("workflow.meta.parse_failed")), e.what());
         return std::nullopt;
     }
 
@@ -58,7 +60,7 @@ std::optional<workflow::WorkflowSpec> decomposeAdHoc(CommandContext& ctx, const 
         size_t total = 0;
         for (const auto& s : spec->stages) total += s.agents.size();
         if (total > 5) {
-            error = "Uretilen spec 5'ten fazla sub-agent iceriyor, guvenlik icin reddedildi.";
+            error = i18n::t("workflow.meta.too_many_agents");
             return std::nullopt;
         }
     }
@@ -71,12 +73,12 @@ CommandResult CmdWorkflow::execute(CommandContext& ctx) {
     if (ctx.rawArgs.empty() || ctx.rawArgs == "list") {
         auto names = workflow::listSavedSpecs();
         if (names.empty()) {
-            fmt::print("Kayitli workflow yok.\n");
+            cli::theme::info(i18n::t("workflow.none_saved"));
         } else {
-            fmt::print("Kayitli workflow'lar:\n");
+            cli::theme::sectionHeader(i18n::t("workflow.saved_header"));
             for (const auto& n : names) fmt::print("  {}\n", n);
         }
-        fmt::print("\nKullanim: /workflow <isim> <girdi>   veya   /workflow <serbest aciklama>\n");
+        fmt::print("\n{}\n", i18n::t("workflow.usage_hint"));
         return CommandResult::Handled;
     }
 
@@ -96,13 +98,14 @@ CommandResult CmdWorkflow::execute(CommandContext& ctx) {
         input = (s == std::string::npos) ? "" : input.substr(s);
         if (input.empty()) input = ctx.rawArgs;
     } else {
-        fmt::print("\n[workflow] serbest aciklama JSON spec'ine cevriliyor (bu bir meta-agent cagrisi)...\n");
+        fmt::print("\n");
+        cli::theme::info(fmt::format("[workflow] {}", i18n::t("workflow.decomposing")));
         input = ctx.rawArgs;
         spec = decomposeAdHoc(ctx, input, error);
     }
 
     if (!spec) {
-        fmt::print("Workflow calistirilamadi: {}\n", error);
+        cli::theme::error(fmt::format(fmt::runtime(i18n::t("workflow.run_failed")), error));
         return CommandResult::ShowError;
     }
 
@@ -111,7 +114,9 @@ CommandResult CmdWorkflow::execute(CommandContext& ctx) {
     std::string synthesisPrompt =
         engine.run(*spec, input, [](const std::string& line) { fmt::print("{}\n", line); });
 
-    fmt::print("\n[workflow] tum asamalar tamamlandi, sonuclar birlestiriliyor...\n\n");
+    fmt::print("\n");
+    cli::theme::info(fmt::format("[workflow] {}", i18n::t("workflow.synthesizing")));
+    fmt::print("\n");
     ctx.app.pendingFollowUp = synthesisPrompt;
     return CommandResult::Handled;
 }

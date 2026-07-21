@@ -18,6 +18,7 @@ struct ProviderConfig {
 
 struct AppConfig {
     std::string default_provider = "ollama";
+    std::string language = "tr";  // "tr" or "en" - see i18n::parseLanguage()
     std::unordered_map<std::string, ProviderConfig> providers;
 
     static AppConfig defaults();

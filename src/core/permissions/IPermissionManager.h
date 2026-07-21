@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "core/tools/ITool.h"
 
@@ -23,6 +24,15 @@ public:
 
     virtual void pushOverride(PolicyOverride override) = 0;
     virtual void popOverride() = 0;
+
+    // Exports the current "always allow" grants (tool names) for persistence,
+    // e.g. saving alongside a session. Returns {} for permission managers
+    // with no such state (e.g. ReadOnlyPermissionManager).
+    virtual std::vector<std::string> exportAlwaysAllowed() const = 0;
+
+    // Merges previously-persisted grants back in, e.g. on /resume - additive,
+    // does not clear grants already made earlier in the current process.
+    virtual void restoreAlwaysAllowed(const std::vector<std::string>& tools) = 0;
 };
 
 }  // namespace aicpp::permissions

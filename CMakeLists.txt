@@ -50,6 +50,13 @@ add_executable(aicpp
   src/core/workflow/WorkflowStore.cpp
   src/core/workflow/WorkflowEngine.cpp
   src/commands/cmd_workflow.cpp
+  src/i18n/Translator.cpp
+  src/i18n/catalog_tr.cpp
+  src/i18n/catalog_en.cpp
+  src/cli/theme.cpp
+  src/commands/cmd_language.cpp
+  src/core/net/CancelToken.cpp
+  src/core/tools/LineDiff.cpp
 )
 
 target_include_directories(aicpp PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -64,7 +71,7 @@ target_link_libraries(aicpp PRIVATE
 )
 
 if (MSVC)
-  target_compile_options(aicpp PRIVATE /W4)
+  target_compile_options(aicpp PRIVATE /W4 /utf-8)
 else()
   target_compile_options(aicpp PRIVATE -Wall -Wextra)
 endif()

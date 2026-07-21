@@ -1,13 +1,13 @@
 #include "commands/cmd_clear.h"
 
-#include <fmt/core.h>
+#include "cli/theme.h"
 
 namespace aicpp::commands {
 
 CommandResult CmdClear::execute(CommandContext& ctx) {
     ctx.app.session.clearHistory();
-    fmt::print("\x1b[2J\x1b[H");
-    fmt::print("Sohbet gecmisi temizlendi.\n");
+    cli::theme::clearScreen();
+    cli::theme::success(i18n::t("clear.done"));
     return CommandResult::Handled;
 }
 

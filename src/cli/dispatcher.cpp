@@ -2,7 +2,10 @@
 
 #include <cctype>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
+
+#include "cli/theme.h"
+#include "i18n/Translator.h"
 
 namespace aicpp::cli {
 
@@ -61,11 +64,11 @@ DispatchOutcome dispatchLine(const std::string& line, CommandRegistry& registry,
 
     ICommand* cmd = registry.find(name);
     if (!cmd) {
-        fmt::print("Bilinmeyen komut: /{}\n", name);
+        theme::warn(fmt::format(fmt::runtime(i18n::t("dispatcher.unknown_command")), name));
         if (auto suggestion = registry.suggest(name)) {
-            fmt::print("Bunu mu demek istediniz: /{}?\n", *suggestion);
+            fmt::print("{}\n", fmt::format(fmt::runtime(i18n::t("dispatcher.suggestion")), *suggestion));
         }
-        fmt::print("Komut listesi icin /help yazabilirsiniz.\n");
+        fmt::print("{}\n", i18n::t("dispatcher.help_hint"));
         return DispatchOutcome::Handled;
     }
 

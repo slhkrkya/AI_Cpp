@@ -2,20 +2,21 @@
 
 #include <fstream>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <nlohmann/json.hpp>
 
+#include "cli/theme.h"
 #include "core/config/Paths.h"
 
 namespace aicpp::commands {
 
 CommandResult CmdConfig::execute(CommandContext&) {
     auto path = config::configFilePath();
-    fmt::print("Config dosyasi: {}\n\n", path.string());
+    fmt::print("{}\n\n", fmt::format(fmt::runtime(i18n::t("config.path")), path.string()));
 
     std::ifstream in(path);
     if (!in) {
-        fmt::print("(dosya okunamadi)\n");
+        cli::theme::error(i18n::t("config.read_failed"));
         return CommandResult::ShowError;
     }
 
@@ -23,7 +24,7 @@ CommandResult CmdConfig::execute(CommandContext&) {
     try {
         in >> j;
     } catch (const nlohmann::json::parse_error&) {
-        fmt::print("(dosya gecerli JSON degil)\n");
+        cli::theme::error(i18n::t("config.invalid_json"));
         return CommandResult::ShowError;
     }
 
@@ -34,13 +35,13 @@ CommandResult CmdConfig::execute(CommandContext&) {
         for (auto& [id, entry] : j["providers"].items()) {
             if (entry.contains("api_key") && entry["api_key"].is_string() &&
                 !entry["api_key"].get<std::string>().empty()) {
-                entry["api_key"] = "***gizli*** (goruntuleme icin redakte edildi, dosyada duz metin duruyor)";
+                entry["api_key"] = i18n::t("config.redacted_marker");
             }
         }
     }
 
     fmt::print("{}\n", j.dump(2));
-    fmt::print("\nDegistirmek icin dosyayi bir editorde duzenleyip uygulamayi yeniden baslat.\n");
+    fmt::print("\n{}\n", i18n::t("config.footer"));
     return CommandResult::Handled;
 }
 

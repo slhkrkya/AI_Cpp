@@ -44,6 +44,7 @@ AppConfig AppConfig::load() {
 
     AppConfig cfg;
     cfg.default_provider = j.value("default_provider", std::string("ollama"));
+    cfg.language = j.value("language", std::string("tr"));
 
     if (j.contains("providers") && j["providers"].is_object()) {
         for (auto& [id, entry] : j["providers"].items()) {
@@ -67,6 +68,7 @@ AppConfig AppConfig::load() {
 void AppConfig::save() const {
     nlohmann::json j;
     j["default_provider"] = default_provider;
+    j["language"] = language;
     j["providers"] = nlohmann::json::object();
     for (const auto& [id, pc] : providers) {
         nlohmann::json entry;

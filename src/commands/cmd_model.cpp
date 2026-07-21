@@ -3,9 +3,10 @@
 #include <cctype>
 #include <iostream>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <fmt/ranges.h>
 
+#include "cli/theme.h"
 #include "core/config/ProviderFactory.h"
 
 namespace aicpp::commands {
@@ -13,7 +14,7 @@ namespace aicpp::commands {
 namespace {
 
 bool readYesNo(const std::string& prompt) {
-    fmt::print("{}", prompt);
+    fmt::print("{}", cli::theme::promptText(prompt));
     std::string answer;
     if (!std::getline(std::cin, answer) || answer.empty()) return false;
     return std::tolower(static_cast<unsigned char>(answer[0])) == 'y';
@@ -33,33 +34,27 @@ bool tryInteractiveProviderSetup(CommandContext& ctx, const std::string& spec, c
     std::string model = spec.substr(colon + 1);
     if (providerId == "ollama") return false;  // no key/base_url needed; failure here means "can't reach it"
 
-    fmt::print("{}\n", priorError);
-    fmt::print(
-        "'{}' saglayicisini simdi ayarlamak ister misin? Girdiklerin ~/.aicpp/config.json'a\n"
-        "kaydedilir, tekrar baslatmana gerek kalmaz. Bu, OpenAI'in chat-completions API'siyle\n"
-        "uyumlu HERHANGI bir saglayici icin calisir (OpenAI, Groq, Mistral, DeepSeek, Together,\n"
-        "Fireworks, xAI/Grok, Azure OpenAI, Gemini'nin openai-uyumlu ucu, yerel llama.cpp/LM\n"
-        "Studio sunucusu, vb.).\n",
-        providerId);
+    cli::theme::warn(priorError);
+    fmt::print("{}\n", fmt::format(fmt::runtime(i18n::t("model.setup.explain")), providerId));
     if (!readYesNo("(y/n): ")) return false;
 
     auto& pc = ctx.app.appConfig.providers[providerId];
 
     if (pc.base_url.empty() && providerId != "openai") {
-        fmt::print("Base URL (orn. https://api.groq.com/openai/v1): ");
+        fmt::print("{}", cli::theme::promptText(i18n::t("model.setup.ask_base_url")));
         std::string url;
         if (!std::getline(std::cin, url) || url.empty()) {
-            fmt::print("URL bos, vazgecildi.\n");
+            cli::theme::warn(i18n::t("model.setup.url_empty"));
             return false;
         }
         pc.base_url = url;
     }
 
     if (pc.api_key.empty()) {
-        fmt::print("API anahtarini yapistir: ");
+        fmt::print("{}", cli::theme::promptText(i18n::t("model.setup.ask_api_key")));
         std::string key;
         if (!std::getline(std::cin, key) || key.empty()) {
-            fmt::print("Anahtar bos, vazgecildi.\n");
+            cli::theme::warn(i18n::t("model.setup.key_empty"));
             return false;
         }
         pc.api_key = key;
@@ -68,7 +63,7 @@ bool tryInteractiveProviderSetup(CommandContext& ctx, const std::string& spec, c
     if (pc.default_model.empty()) pc.default_model = model;
     ctx.app.appConfig.save();
 
-    fmt::print("[uyari] Anahtar config.json'a duz metin olarak kaydedildi - bu dosyayi paylasma.\n");
+    cli::theme::warn(i18n::t("model.setup.saved_plaintext_warning"));
     return true;
 }
 
@@ -76,12 +71,12 @@ bool tryInteractiveProviderSetup(CommandContext& ctx, const std::string& spec, c
 
 CommandResult CmdModel::execute(CommandContext& ctx) {
     if (ctx.rawArgs.empty()) {
-        fmt::print("Mevcut model: {}\n", ctx.app.currentModelSpec);
-        fmt::print("Yapilandirilmis saglayicilar: {}\n",
-                    fmt::join(config::ProviderFactory::availableProviderIds(ctx.app.appConfig), ", "));
-        fmt::print("Degistirmek icin: /model <saglayici>:<model>  (orn. /model openai:gpt-4o-mini)\n");
-        fmt::print("Baska bir saglayici da yazabilirsin (orn. /model groq:llama-3.3-70b-versatile) - "
-                    "tanimli degilse sana sorup kaydeder.\n");
+        fmt::print("{}\n", fmt::format(fmt::runtime(i18n::t("model.current")), ctx.app.currentModelSpec));
+        fmt::print("{}\n", fmt::format(fmt::runtime(i18n::t("model.configured_providers")),
+                                        fmt::join(config::ProviderFactory::availableProviderIds(ctx.app.appConfig),
+                                                   ", ")));
+        fmt::print("{}\n", i18n::t("model.switch_hint"));
+        fmt::print("{}\n", i18n::t("model.other_provider_hint"));
         return CommandResult::Handled;
     }
 
@@ -93,7 +88,7 @@ CommandResult CmdModel::execute(CommandContext& ctx) {
     }
 
     if (!resolved) {
-        fmt::print("Model degistirilemedi: {}\n", error);
+        cli::theme::error(fmt::format(fmt::runtime(i18n::t("model.change_failed")), error));
         return CommandResult::ShowError;
     }
 
@@ -101,7 +96,7 @@ CommandResult CmdModel::execute(CommandContext& ctx) {
     ctx.app.session.setModel(resolved->model);
     ctx.app.currentModelSpec = ctx.rawArgs;
 
-    fmt::print("Model degistirildi: {}\n", ctx.rawArgs);
+    cli::theme::success(fmt::format(fmt::runtime(i18n::t("model.changed")), ctx.rawArgs));
     return CommandResult::Handled;
 }
 

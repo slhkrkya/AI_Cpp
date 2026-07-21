@@ -16,6 +16,9 @@ public:
 
     void pushOverride(PolicyOverride) override {}
     void popOverride() override {}
+
+    std::vector<std::string> exportAlwaysAllowed() const override { return {}; }
+    void restoreAlwaysAllowed(const std::vector<std::string>&) override {}
 };
 
 }  // namespace aicpp::permissions
