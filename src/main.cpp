@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <exception>
 #include <filesystem>
 #include <memory>
 
@@ -59,7 +60,7 @@ std::string makeTitle(const std::string& firstMessage) {
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
     aicpp::cli::enableAnsiSupport();
     aicpp::cli::theme::init();
     aicpp::cli::installCtrlCHandler();
@@ -67,6 +68,34 @@ int main() {
     auto appConfig = aicpp::config::AppConfig::load();
     auto lang = aicpp::i18n::parseLanguage(appConfig.language).value_or(aicpp::i18n::Language::Tr);
     aicpp::i18n::init(lang);
+
+    // Optional positional argument: the project directory to work in (all
+    // relative tool paths - glob/read_file/write_file/etc. - resolve against
+    // the process cwd, so picking the wrong launch directory silently breaks
+    // every relative path the model uses). Defaults to the current directory
+    // when omitted, same as before this was added.
+    if (argc > 1) {
+        std::error_code ec;
+        std::filesystem::path target = argv[1];
+        if (!std::filesystem::is_directory(target, ec) || ec) {
+            aicpp::cli::theme::error(
+                fmt::format(fmt::runtime(aicpp::i18n::t("app.invalid_cwd")), target.string()));
+            return 1;
+        }
+        std::filesystem::current_path(target, ec);
+        if (ec) {
+            aicpp::cli::theme::error(
+                fmt::format(fmt::runtime(aicpp::i18n::t("app.invalid_cwd")), target.string()));
+            return 1;
+        }
+    } else if (auto picked = aicpp::cli::pickWorkingDirectory(std::filesystem::current_path())) {
+        // No path argument (e.g. launched by double-clicking the exe, where
+        // there's no terminal to type one into) - let the user confirm/pick
+        // the project folder instead of silently trusting whatever directory
+        // Explorer happened to launch us in.
+        std::error_code ec;
+        std::filesystem::current_path(*picked, ec);
+    }
 
     aicpp::workflow::ensureExampleSpec();
 
@@ -138,7 +167,12 @@ int main() {
 
         aicpp::net::cancelRequested().store(false);
         streamPrinter.beginTurn();
-        session.runTurn(text, std::ref(streamPrinter));
+        try {
+            session.runTurn(text, std::ref(streamPrinter));
+        } catch (const std::exception& e) {
+            aicpp::cli::theme::error(
+                fmt::format(fmt::runtime(aicpp::i18n::t("app.turn_failed")), e.what()));
+        }
         streamPrinter.endTurn();
         fmt::print("\n\n");
 
@@ -154,7 +188,10 @@ int main() {
         currentSessionMeta = data.meta;
     };
 
-    fmt::print("{}\n\n", fmt::format(fmt::runtime(aicpp::i18n::t("app.banner")), currentModelSpec));
+    fmt::print("{}\n", fmt::format(fmt::runtime(aicpp::i18n::t("app.banner")), currentModelSpec));
+    aicpp::cli::theme::info(
+        fmt::format(fmt::runtime(aicpp::i18n::t("app.cwd_line")), std::filesystem::current_path().string()));
+    fmt::print("\n");
 
     while (true) {
         std::string prompt = appMode == aicpp::modes::AppMode::Planning ? "[PLAN] > " : "> ";

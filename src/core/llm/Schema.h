@@ -131,6 +131,11 @@ struct StreamEvent {
     // ToolExecResult::diff). nullopt = not applicable (most tools); empty
     // vector = computed but no visible change; non-empty = the actual diff.
     std::optional<std::vector<DiffLine>> diff;
+
+    // Populated for ToolCallEnd from ToolExecResult::is_error - lets the CLI
+    // banner show that the tool actually failed instead of always rendering
+    // a success checkmark regardless of outcome.
+    bool is_error = false;
 };
 
 using StreamCallback = std::function<void(const StreamEvent&)>;

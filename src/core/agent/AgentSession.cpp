@@ -1,5 +1,7 @@
 #include "core/agent/AgentSession.h"
 
+#include <exception>
+
 #include <fmt/format.h>
 
 #include "core/net/CancelToken.h"
@@ -109,7 +111,17 @@ ToolResult AgentSession::executeToolCall(const ToolCall& call, const StreamCallb
 
     tools::ToolExecutionContext ctx;
     ctx.working_directory = workingDirectory_;
-    tools::ToolExecResult execResult = tool->execute(call.arguments, ctx);
+    tools::ToolExecResult execResult;
+    try {
+        execResult = tool->execute(call.arguments, ctx);
+    } catch (const std::exception& e) {
+        // Malformed tool-call arguments (e.g. a missing required field from a
+        // small/quantized model) throw out of nlohmann::json's args.at(...) -
+        // report it back to the model as a normal tool error instead of
+        // letting the exception unwind past runTurn() and crash the process.
+        execResult.is_error = true;
+        execResult.content_for_model = fmt::format("Tool call failed - invalid arguments: {}", e.what());
+    }
 
     result.content = execResult.content_for_model;
     result.is_error = execResult.is_error;
@@ -119,6 +131,10 @@ ToolResult AgentSession::executeToolCall(const ToolCall& call, const StreamCallb
     endEv.tool_id = call.id;
     endEv.tool_name = call.name;
     endEv.diff = execResult.diff;
+    endEv.is_error = execResult.is_error;
+    // Only copy the (possibly large, e.g. a full file read) content when it's
+    // actually an error message worth surfacing in the banner.
+    if (execResult.is_error) endEv.text = execResult.content_for_model;
     onEvent(endEv);
 
     return result;

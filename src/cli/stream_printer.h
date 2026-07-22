@@ -51,7 +51,7 @@ public:
                 theme::toolBanner(ev.tool_name, theme::ToolPhase::Start);
                 break;
             case Type::ToolCallEnd:
-                theme::toolBanner(ev.tool_name, theme::ToolPhase::End);
+                theme::toolBanner(ev.tool_name, theme::ToolPhase::End, ev.is_error, ev.text);
                 if (ev.diff && !ev.diff->empty()) theme::diffBlock(*ev.diff);
                 break;
             case Type::MessageDone:

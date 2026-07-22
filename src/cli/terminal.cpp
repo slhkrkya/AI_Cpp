@@ -3,6 +3,11 @@
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+#include <ShObjIdl.h>
+#pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "uuid.lib")
 #else
 #include <csignal>
 #endif
@@ -65,6 +70,56 @@ void sigintHandler(int signum) {
 }  // namespace
 
 void installCtrlCHandler() { std::signal(SIGINT, sigintHandler); }
+
+#endif
+
+#ifdef _WIN32
+
+std::optional<std::filesystem::path> pickWorkingDirectory(const std::filesystem::path& initialDir) {
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    // RPC_E_CHANGED_MODE means COM was already initialized on this thread with
+    // different concurrency flags - still usable, just don't uninitialize it.
+    bool weInitialized = hr == S_OK || hr == S_FALSE;
+    if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) return std::nullopt;
+
+    std::optional<std::filesystem::path> result;
+    IFileDialog* dialog = nullptr;
+    if (SUCCEEDED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
+                                    IID_PPV_ARGS(&dialog)))) {
+        DWORD options = 0;
+        dialog->GetOptions(&options);
+        dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_PATHMUSTEXIST | FOS_FORCEFILESYSTEM);
+
+        IShellItem* initialItem = nullptr;
+        if (SUCCEEDED(SHCreateItemFromParsingName(initialDir.wstring().c_str(), nullptr,
+                                                    IID_PPV_ARGS(&initialItem)))) {
+            dialog->SetFolder(initialItem);
+            initialItem->Release();
+        }
+
+        if (SUCCEEDED(dialog->Show(nullptr))) {
+            IShellItem* chosen = nullptr;
+            if (SUCCEEDED(dialog->GetResult(&chosen))) {
+                PWSTR pathStr = nullptr;
+                if (SUCCEEDED(chosen->GetDisplayName(SIGDN_FILESYSPATH, &pathStr))) {
+                    result = std::filesystem::path(pathStr);
+                    CoTaskMemFree(pathStr);
+                }
+                chosen->Release();
+            }
+        }
+        dialog->Release();
+    }
+
+    if (weInitialized) CoUninitialize();
+    return result;
+}
+
+#else
+
+std::optional<std::filesystem::path> pickWorkingDirectory(const std::filesystem::path&) {
+    return std::nullopt;
+}
 
 #endif
 

@@ -16,6 +16,9 @@ const std::unordered_map<std::string, std::string>& catalog_tr() {
         {"app.startup_provider_failed", "Başlangıç sağlayıcısı kurulamadı: {}"},
         {"app.bye", "Hoşça kal."},
         {"app.cancelled", "İptal edildi."},
+        {"app.turn_failed", "Bu tur beklenmeyen bir hatayla sonlandı, oturum kapanmadı: {}"},
+        {"app.cwd_line", "Çalışma dizini: {}"},
+        {"app.invalid_cwd", "Geçersiz dizin: {}"},
 
         // cli/dispatcher.cpp
         {"dispatcher.unknown_command", "Bilinmeyen komut: /{}"},
@@ -29,6 +32,7 @@ const std::unordered_map<std::string, std::string>& catalog_tr() {
         // tool-call banners (cli/stream_printer.h via cli/theme.cpp)
         {"tool.start", "araç çalışıyor: {}"},
         {"tool.end", "araç tamamlandı: {}"},
+        {"tool.end_error", "araç başarısız: {}"},
 
         // command descriptions/usages
         {"cmd.help.desc", "Kullanılabilir komutları listeler"},

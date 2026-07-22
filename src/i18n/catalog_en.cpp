@@ -16,6 +16,9 @@ const std::unordered_map<std::string, std::string>& catalog_en() {
         {"app.startup_provider_failed", "Failed to set up the startup provider: {}"},
         {"app.bye", "Bye."},
         {"app.cancelled", "Cancelled."},
+        {"app.turn_failed", "This turn ended with an unexpected error, the session stayed open: {}"},
+        {"app.cwd_line", "Working directory: {}"},
+        {"app.invalid_cwd", "Invalid directory: {}"},
 
         // cli/dispatcher.cpp
         {"dispatcher.unknown_command", "Unknown command: /{}"},
@@ -29,6 +32,7 @@ const std::unordered_map<std::string, std::string>& catalog_en() {
         // tool-call banners (cli/stream_printer.h via cli/theme.cpp)
         {"tool.start", "running tool: {}"},
         {"tool.end", "tool finished: {}"},
+        {"tool.end_error", "tool failed: {}"},
 
         // command descriptions/usages
         {"cmd.help.desc", "Lists the available commands"},

@@ -41,7 +41,14 @@ std::string coloredPrompt(std::string_view plainPrompt);
 std::string promptText(std::string_view text);
 
 enum class ToolPhase { Start, End };
-void toolBanner(std::string_view toolName, ToolPhase phase);
+// isError/detail only apply to ToolPhase::End (ignored for Start): renders a
+// failed-tool banner instead of the default success checkmark. detail, when
+// given, is the tool's own error message, appended within the SAME print
+// call as the banner (see the single-print-call discipline above - splitting
+// it into a second call would let WorkflowEngine's concurrent progress
+// callback interleave colors between them).
+void toolBanner(std::string_view toolName, ToolPhase phase, bool isError = false,
+                 std::string_view detail = {});
 
 // Assistant-turn streaming: begin prints a role header and opens the
 // assistant color; resume re-opens it (no header) after it was paused, e.g.

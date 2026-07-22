@@ -109,16 +109,25 @@ std::string promptText(std::string_view text) {
     return fmt::format("{}{}{}", kBold, text, kReset);
 }
 
-void toolBanner(std::string_view toolName, ToolPhase phase) {
-    std::string label = phase == ToolPhase::Start ? fmt::format(fmt::runtime(i18n::t("tool.start")), toolName)
-                                                    : fmt::format(fmt::runtime(i18n::t("tool.end")), toolName);
-    const char* glyph = phase == ToolPhase::Start ? "▶" : "✓";
+void toolBanner(std::string_view toolName, ToolPhase phase, bool isError, std::string_view detail) {
+    bool failed = phase == ToolPhase::End && isError;
+    std::string label;
+    if (phase == ToolPhase::Start) {
+        label = fmt::format(fmt::runtime(i18n::t("tool.start")), toolName);
+    } else if (failed) {
+        label = fmt::format(fmt::runtime(i18n::t("tool.end_error")), toolName);
+    } else {
+        label = fmt::format(fmt::runtime(i18n::t("tool.end")), toolName);
+    }
+    const char* glyph = phase == ToolPhase::Start ? "▶" : (failed ? "✗" : "✓");
     const char* leading = phase == ToolPhase::Start ? "\n" : "";
+    std::string detailSuffix = (failed && !detail.empty()) ? fmt::format("\n  {}", detail) : std::string();
 
     if (richOutputEnabled(stdout)) {
-        fmt::print("{}{}{} {}{}\n", leading, kDim, glyph, label, kReset);
+        std::string_view color = failed ? kBoldRed : kDim;
+        fmt::print("{}{}{} {}{}{}\n", leading, color, glyph, label, detailSuffix, kReset);
     } else {
-        fmt::print("{}[{}]\n", leading, label);
+        fmt::print("{}[{}]{}\n", leading, label, detailSuffix);
     }
 }
 
