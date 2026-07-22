@@ -7,3 +7,4 @@ vcpkg_installed/
 CMakeUserPresets.json
 .claude/
 *.obj
+/docs/
