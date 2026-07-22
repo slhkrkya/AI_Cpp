@@ -58,6 +58,23 @@ VS Code'da çalışmak istersen: **C/C++** ve **CMake Tools** (ikisi de Microsof
 
 `/help` mevcut komutları ve bulut sağlayıcı kurulumunu (API anahtarı vb.) nasıl yapacağını gösterir. Arayüz varsayılan olarak Türkçe'dir; İngilizce'ye geçmek için `/language en` yaz.
 
+## Ekran Görüntüleri
+
+**`/help` ve `/model` ile sağlayıcı değiştirme**
+![/help komutu ve model değiştirme](docs/help.png)
+
+**Proje hakkında soru-cevap (`read_file` ile kod inceleme)**
+![Kod okuyarak proje konsepti açıklama](docs/code_review.png)
+
+**`glob` ile proje dosya yapısını tarama**
+![Proje klasör yapısını inceleme](docs/klasor_review.png)
+
+**Plan modu: salt-okunur inceleme ve plan üretimi**
+![Plan modu ve plan onayı](docs/plan.png)
+
+**Plan onayı sonrası izin promptu ve renkli diff önizlemesi**
+![İzin promptu ve diff önizlemesi](docs/sonuc.png)
+
 ## Bilinen Sınırlamalar
 
 - GPU hızlandırması olmayan makinelerde Ollama tamamen CPU'da çalışır ve gözle görülür şekilde yavaşlar (Ctrl-C ile en azından akan cevabı hemen durdurabilirsin).
